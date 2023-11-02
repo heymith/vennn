@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Nested Comment System</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="comments-container">
+    <textarea id="comment-input" placeholder="Write your comment here..."></textarea>
+    <button id="submit-btn">Submit Comment</button>
+    <ul id="comments-list" class="comments-list"></ul>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let commentsData = [
+  {
+    id: 1,
+    content: "This is the first comment!",
+    upvotes: 5,
+    downvotes: 2,
+    replies: [
+      {
+        id: 11,
+        content: "First subreply to the first comment!",
+        upvotes: 3,
+        downvotes: 1,
+        replies: [
+          {
+            id: 111,
+            content: "First sub-subreply to the first comment!",
+            upvotes: 2,
+            downvotes: 4,
+            replies: []
+          },
+          {
+            id: 112,
+            content: "Second sub-subreply to the first comment!",
+            upvotes: 1,
+            downvotes: 0,
+            replies: []
+          }
+        ]
+      },
+      {
+        id: 12,
+        content: "Second subreply to the first comment!",
+        upvotes: 1,
+        downvotes: 0,
+        replies: []
+      }
+    ]
+  },
+  {
+    id: 2,
+    content: "This is the second comment!",
+    upvotes: 2,
+    downvotes: 1,
+    replies: [
+      {
+        id: 21,
+        content: "First subreply to the second comment!",
+        upvotes: 0,
+        downvotes: 1,
+        replies: []
+      }
+    ]
+  }
+];
+
+function updateVotesCount(element, votes) {
+  const votesCount = element.querySelector(".votes-count");
+  votesCount.textContent = votes;
+}
+
+function renderComments(comments, parentElement) {
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const comment = comments[i];
+    const totalVotes = comment.upvotes - comment.downvotes;
+
+    const commentElement = document.createElement("li");
+    commentElement.classList.add("comment");
+    commentElement.innerHTML = `
+      <div class="votes">
+        <button class="vote-btn upvote" data-vote="up"><img src="upvote.png" alt="Upvote"></button>
+        <span class="votes-count">${totalVotes}</span>
+        <button class="vote-btn downvote" data-vote="down"><img src="downvote.png" alt="Downvote"></button>
+      </div>
+      <div class="comment-content">${comment.content}</div>
+      <button class="reply-btn">Reply</button>
+      <button class="close-btn">Close</button>
+      <div class="reply-dropdown">
+        <textarea class="reply-input" placeholder="Write your reply here..."></textarea>
+        <button class="submit-reply-btn">Submit Reply</button>
+      </div>
+      <ul class="replies"></ul>
+      <button class="hide-replies-btn">Hide Replies</button>
+      <button class="show-replies-btn">Show Replies</button>
+    `;
+
+    const replyBtn = commentElement.querySelector(".reply-btn");
+    const closeBtn = commentElement.querySelector(".close-btn");
+    const replyDropdown = commentElement.querySelector(".reply-dropdown");
+    const replyInput = commentElement.querySelector(".reply-input");
+    const submitReplyBtn = commentElement.querySelector(".submit-reply-btn");
+    const repliesContainer = commentElement.querySelector(".replies");
+    const voteBtns = commentElement.querySelectorAll(".vote-btn");
+    const showRepliesBtn = commentElement.querySelector(".show-replies-btn");
+    const hideRepliesBtn = commentElement.querySelector(".hide-replies-btn");
+    closeBtn.style.display = "none";
+
+    replyBtn.addEventListener("click", () => {
+      replyDropdown.style.display = "block";
+      replyInput.style.display = "block";
+      submitReplyBtn.style.display = "block";
+      replyBtn.style.display = "none";
+      closeBtn.style.display = "inline-block";
+    });
+
+    closeBtn.addEventListener("click", () => {
+      replyDropdown.style.display = "none";
+      replyInput.style.display = "none";
+      submitReplyBtn.style.display = "none";
+      replyBtn.style.display = "inline-block";
+      closeBtn.style.display = "none";
+    });
+
+    submitReplyBtn.addEventListener("click", () => {
+      const replyContent = replyInput.value;
+      if (replyContent) {
+        closeBtn.style.display = "none";
+        comment.replies.push({
+          id: Date.now(),
+          content: replyContent,
+          upvotes: 0,
+          downvotes: 0,
+          replies: []
+        });
+        replyInput.value = "";
+        replyDropdown.style.display = "none";
+        replyBtn.style.display = "inline-block";
+        renderSubreplies(comment.replies, repliesContainer);
+        repliesContainer.style.display = "block";
+        hideRepliesBtn.style.display = "inline-block";
+        showRepliesBtn.style.display = "none";
+      }
+    });
+
+    hideRepliesBtn.addEventListener("click", () => {
+      repliesContainer.style.display = "none";
+      hideRepliesBtn.style.display = "none";
+      showRepliesBtn.style.display = "inline-block";
+    });
+
+    showRepliesBtn.addEventListener("click", () => {
+      repliesContainer.style.display = "block";
+      hideRepliesBtn.style.display = "inline-block";
+      showRepliesBtn.style.display = "none";
+    });
+
+voteBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const voteType = btn.dataset.vote;
+        if (voteType === "up") {
+          comment.upvotes++;
+        } else if (voteType === "down") {
+          comment.downvotes++;
+        }
+
+        updateVotesCount(commentElement, comment.upvotes - comment.downvotes);
+
+        voteBtns.forEach((btn) => btn.classList.remove("upvoted", "downvoted"));
+        if (comment.upvotes > comment.downvotes) {
+          btn.classList.add("upvoted");
+        } else if (comment.upvotes < comment.downvotes) {
+          btn.classList.add("downvoted");
+        }
+      });
+    });
+
+    parentElement.appendChild(commentElement);
+    renderSubreplies(comment.replies, repliesContainer);
+
+    if (comment.replies.length > 0) {
+      hideRepliesBtn.style.display = "inline-block";
+      showRepliesBtn.style.display = "none";
+    } else {
+      hideRepliesBtn.style.display = "none";
+      showRepliesBtn.style.display = "none";
+    }
+  }
+}
+
+function renderSubreplies(subreplies, parentElement) {
+  parentElement.innerHTML = '';
+  for (let i = subreplies.length - 1; i >= 0; i--) {
+    const subreply = subreplies[i];
+    const totalVotes = subreply.upvotes - subreply.downvotes;
+
+    const subreplyElement = document.createElement("li");
+    subreplyElement.classList.add("comment");
+    subreplyElement.innerHTML = `
+      <div class="votes">
+        <button class="vote-btn upvote" data-vote="up"><img src="upvote.png" alt="Upvote"></button>
+        <span class="votes-count">${totalVotes}</span>
+        <button class="vote-btn downvote" data-vote="down"><img src="downvote.png" alt="Downvote"></button>
+      </div>
+      <div class="comment-content">${subreply.content}</div>
+      <button class="reply-btn">Reply</button>
+      <button class="close-btn">Close</button>
+      <div class="reply-dropdown">
+        <textarea class="reply-input" placeholder="Write your reply here..."></textarea>
+        <button class="submit-reply-btn">Submit Reply</button>
+      </div>
+      <ul class="replies"></ul>
+      <button class="hide-replies-btn">Hide Replies</button>
+      <button class="show-replies-btn">Show Replies</button>
+    `;
+
+    const replyBtn = subreplyElement.querySelector(".reply-btn");
+    const closeBtn = subreplyElement.querySelector(".close-btn");
+    const replyDropdown = subreplyElement.querySelector(".reply-dropdown");
+    const replyInput = subreplyElement.querySelector(".reply-input");
+    const submitReplyBtn = subreplyElement.querySelector(".submit-reply-btn");
+    const repliesContainer = subreplyElement.querySelector(".replies");
+    const voteBtns = subreplyElement.querySelectorAll(".vote-btn");
+    const showRepliesBtn = subreplyElement.querySelector(".show-replies-btn");
+    const hideRepliesBtn = subreplyElement.querySelector(".hide-replies-btn");
+    closeBtn.style.display = "none";
+
+    replyBtn.addEventListener("click", () => {
+      replyDropdown.style.display = "block";
+      replyInput.style.display = "block";
+      submitReplyBtn.style.display = "block";
+      replyBtn.style.display = "none";
+      closeBtn.style.display = "inline-block";
+    });
+
+    closeBtn.addEventListener("click", () => {
+      replyDropdown.style.display = "none";
+      replyInput.style.display = "none";
+      submitReplyBtn.style.display = "none";
+      replyBtn.style.display = "inline-block";
+      closeBtn.style.display = "none";
+    });
+
+    submitReplyBtn.addEventListener("click", () => {
+      const replyContent = replyInput.value;
+      if (replyContent) {
+        subreply.replies.push({
+          id: Date.now(),
+          content: replyContent,
+          upvotes: 0,
+          downvotes: 0,
+          replies: []
+        });
+        replyInput.value = "";
+        replyDropdown.style.display = "none";
+        replyBtn.style.display = "inline-block";
+        closeBtn.style.display = "none";
+        renderSubreplies(subreply.replies, repliesContainer);
+        repliesContainer.style.display = "block";
+        hideRepliesBtn.style.display = "inline-block";
+        showRepliesBtn.style.display = "none";
+      }
+    });
+
+    hideRepliesBtn.addEventListener("click", () => {
+      repliesContainer.style.display = "none";
+      hideRepliesBtn.style.display = "none";
+      showRepliesBtn.style.display = "inline-block";
+    });
+
+    showRepliesBtn.addEventListener("click", () => {
+      repliesContainer.style.display = "block";
+      hideRepliesBtn.style.display = "inline-block";
+      showRepliesBtn.style.display = "none";
+    });
+
+    voteBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const voteType = btn.dataset.vote;
+        if (voteType === "up") {
+          subreply.upvotes++;
+        } else if (voteType === "down") {
+          subreply.downvotes++;
+        }
+
+        updateVotesCount(subreplyElement, subreply.upvotes - subreply.downvotes);
+
+        voteBtns.forEach((btn) => btn.classList.remove("upvoted", "downvoted"));
+        if (subreply.upvotes > subreply.downvotes) {
+          btn.classList.add("upvoted");
+        } else if (subreply.upvotes < subreply.downvotes) {
+          btn.classList.add("downvoted");
+        }
+      });
+    });
+
+    parentElement.appendChild(subreplyElement);
+    renderSubreplies(subreply.replies, repliesContainer);
+
+    if (subreply.replies.length > 0) {
+      hideRepliesBtn.style.display = "inline-block";
+      showRepliesBtn.style.display = "none";
+    } else {
+      hideRepliesBtn.style.display = "none";
+      showRepliesBtn.style.display = "none";
+    }
+  }
+}
+
+function addComment() {
+  const commentInput = document.getElementById("comment-input");
+  const commentContent = commentInput.value;
+
+  if (commentContent) {
+    commentsData.push({
+      id: Date.now(),
+      content: commentContent,
+      upvotes: 0,
+      downvotes: 0,
+      replies: []
+    });
+    commentInput.value = "";
+    const commentsList = document.getElementById("comments-list");
+    commentsList.innerHTML = "";
+    renderComments(commentsData, commentsList);
+  }
+}
+
+const submitBtn = document.getElementById("submit-btn");
+submitBtn.addEventListener("click", addComment);
+
+const commentsList = document.getElementById("comments-list");
+renderComments(commentsData, commentsList);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f9f9f9;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comment-box {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+#comment-input {
+  flex: 1;
+  height: 50px;
+  resize: none;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#submit-btn {
+  margin-left: 10px;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.comment {
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s;
+}
+
+.comment:nth-child(odd) {
+  background-color: #f9f9f9;
+}
+
+.comment-content {
+  margin-bottom: 10px;
+}
+
+.votes {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.vote-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 5px;
+  transition: transform 0.2s;
+}
+
+.vote-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+.votes-count {
+  margin-right: 5px;
+  font-weight: bold;
+}
+
+.vote-btn.upvoted img {
+  transform: translateY(-2px);
+}
+
+.vote-btn.downvoted img {
+  transform: translateY(2px);
+}
+
+.vote-btn:hover {
+  transform: scale(1.2);
+}
+
+.vote-btn.upvoted:hover img {
+  transform: translateY(-2px) scale(1.2);
+}
+
+.vote-btn.downvoted:hover img {
+  transform: translateY(2px) scale(1.2);
+}
+
+.reply-dropdown {
+  display: none;
+  margin-bottom: 10px;
+}
+
+.reply-input {
+  width: 100%;
+  height: 50px;
+  resize: none;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.reply-btn, .close-btn, .submit-reply-btn, .show-replies-btn, .hide-replies-btn {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 5px 10px;
+  margin-right: 5px;
+  transition: background-color 0.2s;
+}
+
+.reply-btn:hover, .close-btn:hover, .submit-reply-btn:hover, .show-replies-btn:hover, .hide-replies-btn:hover {
+  background-color: #0056b3;
+}
+
+.show-replies-btn, .hide-replies-btn {
+  display: none;
+}
+
+.replies {
+  list-style-type: none;
+  margin-left: 30px;
+  padding: 0;
+}
+
+.replies .comment {
+  border: none;
+  padding: 0;
+  margin-bottom: 10px;
+}
